@@ -29,6 +29,12 @@ env:
 
 jobs:
   verify:
+    # Skip the workflow on the karnstack canonical template itself.
+    # A template-marked repo cannot produce a valid `template_repository`
+    # claim, so karnstack's verify endpoint would reject it anyway with
+    # `not_from_template`. Skipping here saves the action minutes and
+    # keeps the template's CI history clean.
+    if: ${{ !github.event.repository.is_template }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
