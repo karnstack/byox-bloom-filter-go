@@ -1,0 +1,82 @@
+name: verify-stages
+
+# Runs the BYOX test suite on every push to main, hashes the canonical
+# files, mints a GitHub OIDC token bound to audience=karnstack, and
+# reports the result to karnstack.com so verified stages light up in
+# your karnstack dashboard.
+#
+# You should not edit this workflow or anything in .karnstack/ - those
+# files are part of the karnstack canonical template and their hashes
+# are checked server-side. Modifying them causes verification to be
+# rejected with `files_modified`. Re-fetch them from the template if
+# you do edit by accident:
+#
+#   git checkout origin/template -- .github/workflows/verify-stages.yml .karnstack/
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write   # required to mint the OIDC token
+
+env:
+  PROJECT_SLUG: bloom-filter
+  LANGUAGE: go
+  KARNSTACK_URL: https://karnstack.com
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install mise toolchain
+        uses: jdx/mise-action@v2
+
+      - name: Run all stages
+        id: tests
+        continue-on-error: true
+        run: mise run all 2>&1 | tee test-output.txt
+
+      - name: Compute canonical file hashes
+        run: bash .karnstack/compute-hashes.sh > hashes.json
+
+      - name: Parse passing stages from test output
+        run: bash .karnstack/parse-stages.sh test-output.txt > stages.json
+
+      - name: Mint OIDC token and post to karnstack
+        run: |
+          set -euo pipefail
+
+          OIDC_TOKEN=$(curl -sLS \
+            -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=karnstack" \
+            | jq -r '.value')
+
+          PAYLOAD=$(jq -n \
+            --arg t "$OIDC_TOKEN" \
+            --arg p "$PROJECT_SLUG" \
+            --arg l "$LANGUAGE" \
+            --slurpfile s stages.json \
+            --slurpfile h hashes.json \
+            '{ oidc_token: $t, project: $p, language: $l, stages: $s[0], hashes: $h[0] }')
+
+          RESPONSE=$(curl -sS -X POST "${KARNSTACK_URL}/api/v1/byox/verify" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD")
+
+          echo "karnstack response:"
+          echo "$RESPONSE" | jq .
+
+          OK=$(echo "$RESPONSE" | jq -r '.ok // false')
+          if [ "$OK" != "true" ]; then
+            REASON=$(echo "$RESPONSE" | jq -r '.reason // "unknown"')
+            echo "::warning title=karnstack verify::verification not accepted: ${REASON}"
+          else
+            STAGES=$(echo "$RESPONSE" | jq -r '.verified_stages | join(", ")')
+            echo "::notice title=karnstack verify::verified stages: ${STAGES}"
+          fi

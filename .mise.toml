@@ -1,0 +1,34 @@
+# mise pins the toolchain and exposes karnstack BYOX tasks.
+# Install mise first: https://mise.jdx.dev/getting-started.html
+#
+# Then from this directory:
+#   mise trust            # one-time, allow this config to run
+#   mise install          # installs Go 1.26 (if not already present)
+#   mise run stage 1      # runs the tests for stage 1
+#   mise run all          # runs every stage's tests
+#
+# Each stage maps to a Go test function prefix:
+#   stage 1 -> TestStage01_*
+#   stage 2 -> TestStage02_*
+#   ...
+
+[tools]
+go = "1.26"
+
+[tasks.stage]
+description = "Run tests for one stage. Usage: mise run stage <n>"
+usage = '''
+arg "n" help="Stage number, 1 through 6."
+'''
+run = '''
+prefix=$(printf 'TestStage%02d_' "$usage_n")
+go test -v -run "^${prefix}" ./bloom/...
+'''
+
+[tasks.all]
+description = "Run tests for every stage."
+run = "go test -v ./bloom/..."
+
+[tasks.bench]
+description = "Run benchmarks (used by stages 4 and 5)."
+run = "go test -bench=. -benchmem ./bloom/..."
