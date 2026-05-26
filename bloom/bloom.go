@@ -23,6 +23,10 @@ type Filter struct {
 	// via New. Stage 2 uses NewWithK for arbitrary k via the
 	// Kirsch-Mitzenmacher construction.
 	k uint64
+	// blocked toggles the stage-4 cache-line-blocked layout. When true,
+	// Add/Test pick a 512-bit (8 x uint64) block once via h_a and place
+	// all k probes inside that block.
+	blocked bool
 }
 
 // New returns a filter with at least m bits of capacity, rounded up to the
@@ -70,4 +74,64 @@ func (f *Filter) M() uint64 {
 // K returns the number of hash functions per probe.
 func (f *Filter) K() uint64 {
 	return f.k
+}
+
+// OptimalSize returns the (m, k) that minimize the false-positive rate
+// for n keys at target rate p, using the closed-form bounds:
+//
+//	m = ceil(-n * ln(p) / (ln 2)^2)
+//	k = round((m / n) * ln 2)
+//
+// Stage 3: implement this.
+func OptimalSize(n uint64, p float64) (m uint64, k int) {
+	// TODO(stage3).
+	return 0, 0
+}
+
+// NewBlocked returns a filter sized like NewWithK but using the
+// cache-line-blocked layout from Putze-Sanders-Singler 2007: a primary
+// hash picks one 512-bit (eight uint64) block, then all k probes live
+// inside that block. Same Add/Test signatures as Filter.
+//
+// Stage 4: implement this.
+func NewBlocked(m, k uint64) *Filter {
+	// TODO(stage4): build a blocked-layout filter.
+	return nil
+}
+
+// MarshalBinary serializes the filter's m, k, and bit array into a
+// byte slice. Use a fixed little-endian header so two implementations of
+// the same stage produce byte-equal output for the same state.
+//
+// Suggested format:
+//
+//	bytes 0..3:  magic "BLM1"
+//	bytes 4..11: m (uint64 LE)
+//	bytes 12..19: k (uint64 LE)
+//	byte  20:    flags (bit 0 = blocked layout)
+//	byte  21..: bit array, len = m/8 bytes, little-endian within each word
+//
+// Stage 6: implement this.
+func (f *Filter) MarshalBinary() ([]byte, error) {
+	// TODO(stage6).
+	return nil, nil
+}
+
+// UnmarshalBinary reverses MarshalBinary. After this call, f.M(), f.K()
+// and Test results match the source filter.
+//
+// Stage 6: implement this.
+func (f *Filter) UnmarshalBinary(data []byte) error {
+	// TODO(stage6).
+	return nil
+}
+
+// Saturation returns the fraction of bits currently set in the bit
+// array. Useful for monitoring fill in production. The theoretical
+// expectation is 1 - exp(-k*n/m).
+//
+// Stage 6: implement this.
+func (f *Filter) Saturation() float64 {
+	// TODO(stage6).
+	return 0
 }

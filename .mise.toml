@@ -22,12 +22,12 @@ arg "n" help="Stage number, 1 through 6."
 '''
 run = '''
 prefix=$(printf 'TestStage%02d_' "$usage_n")
-go test -v -run "^${prefix}" ./bloom/...
+go test -race -v -run "^${prefix}" ./bloom/...
 '''
 
 [tasks.all]
 description = "Run tests for every stage."
-run = "go test -v ./bloom/..."
+run = "go test -race -v ./bloom/..."
 
 [tasks.bench]
 description = "Run benchmarks (used by stages 4 and 5)."
