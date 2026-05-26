@@ -59,12 +59,21 @@ jobs:
         # Workflow-attested template lineage. karnstack's verify endpoint
         # prefers this over hitting the unauthenticated GitHub API, which
         # is required for private forks (the API call 404s on those).
+        #
+        # The push event payload does NOT include
+        # repository.template_repository (it's a stripped-down version of
+        # the repo object), so we ask the REST API directly with the
+        # auto-issued GITHUB_TOKEN. This call is authenticated and works
+        # on private forks.
+        #
         # Trust is gated server-side by the hash check above: editing this
         # workflow to lie about template_repo busts the canonical hash and
         # the verification is rejected with `files_modified`.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          TMPL='${{ github.event.repository.template_repository.full_name }}'
+          TMPL=$(gh api "repos/${GITHUB_REPOSITORY}" --jq '.template_repository.full_name // ""')
           echo "full_name=${TMPL}" >> "$GITHUB_OUTPUT"
 
       - name: Mint OIDC token and post to karnstack
