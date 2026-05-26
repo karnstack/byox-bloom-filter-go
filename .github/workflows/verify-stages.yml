@@ -106,7 +106,13 @@ jobs:
           OK=$(echo "$RESPONSE" | jq -r '.ok // false')
           if [ "$OK" != "true" ]; then
             REASON=$(echo "$RESPONSE" | jq -r '.reason // "unknown"')
-            echo "::warning title=karnstack verify::verification not accepted: ${REASON}"
+            if [ "$REASON" = "files_modified" ]; then
+              echo "::error title=karnstack verify::your starter is out of sync with karnstack. run 'mise run sync' (or bash .karnstack/sync.sh) to pull the latest canonical files, then commit and push."
+              echo "::error::if .karnstack/sync.sh does not yet exist in your fork, bootstrap it first:"
+              echo "::error::  curl -fsSL https://raw.githubusercontent.com/karnstack/byox-bloom-filter-go/main/.karnstack/sync.sh -o .karnstack/sync.sh && chmod +x .karnstack/sync.sh && bash .karnstack/sync.sh"
+            else
+              echo "::warning title=karnstack verify::verification not accepted: ${REASON}"
+            fi
           else
             STAGES=$(echo "$RESPONSE" | jq -r '.verified_stages | join(", ")')
             echo "::notice title=karnstack verify::verified stages: ${STAGES}"

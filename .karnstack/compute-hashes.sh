@@ -38,6 +38,7 @@ declare -a FILES=(
   ".github/workflows/verify-stages.yml"
   ".karnstack/compute-hashes.sh"
   ".karnstack/parse-stages.sh"
+  ".karnstack/sync.sh"
   ".mise.toml"
 )
 

@@ -32,3 +32,7 @@ run = "go test -v ./bloom/..."
 [tasks.bench]
 description = "Run benchmarks (used by stages 4 and 5)."
 run = "go test -bench=. -benchmem ./bloom/..."
+
+[tasks.sync]
+description = "Pull canonical files from the karnstack template."
+run = "bash .karnstack/sync.sh"
