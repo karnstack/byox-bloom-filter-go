@@ -41,13 +41,20 @@ declare -a FILES=(
 )
 
 # Discover stage test files from the upstream tree. Keeps sync robust to
-# new stages landing in the template without code changes here.
-mapfile -t REMOTE_TESTS < <(
+# new stages landing in the template without code changes here. Uses a
+# while-read loop (not mapfile) so this works on macOS's default
+# bash 3.2.
+REMOTE_TESTS=()
+while IFS= read -r line; do
+  [ -n "$line" ] && REMOTE_TESTS+=("$line")
+done < <(
   git ls-tree -r --name-only "${REMOTE}/${BRANCH}" \
     | grep -E '^bloom/stage[0-9]+_[a-z0-9_]+_test\.go$' \
     || true
 )
-FILES+=("${REMOTE_TESTS[@]}")
+if [ "${#REMOTE_TESTS[@]}" -gt 0 ]; then
+  FILES+=("${REMOTE_TESTS[@]}")
+fi
 
 # Refuse to overwrite uncommitted edits to a canonical file. The user
 # should stash or commit deliberately before letting sync reset them.
